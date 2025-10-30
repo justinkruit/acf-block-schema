@@ -71,6 +71,21 @@ jobs:
             const title = "Sync: update schemas from Gutenberg";
             const body = "Automated sync of `schemas/` from WordPress/gutenberg (filtered to repo root).";
 
+            // Ensure there are commits on head that are not in base
+            try {
+              const cmp = await github.rest.repos.compareCommits({ owner, repo, base, head });
+              // ahead_by === 0 => no commits on head that aren't in base
+              if (cmp && cmp.data && typeof cmp.data.ahead_by === 'number' && cmp.data.ahead_by === 0) {
+                console.log("No commits between main and upstream-mirror — skipping PR creation.");
+                return;
+              }
+            } catch (err) {
+              // If compareCommits throws 404, one of the refs may not exist; continue to try listing PRs/create
+              if (err.status !== 404) {
+                throw err;
+              }
+            }
+
             // Try to find an open PR from upstream-mirror to main
             const { data: prs } = await github.rest.pulls.list({
               owner, repo, state: "open", base, head: `${owner}:${head}`
@@ -82,6 +97,14 @@ jobs:
                 owner, repo, pull_number: prs[0].number, title, body
               });
             } else {
-              // Create a new PR
-              await github.rest.pulls.create({ owner, repo, head, base, title, body });
+              // Create a new PR, but gracefully handle the "No commits between" validation error
+              try {
+                await github.rest.pulls.create({ owner, repo, head, base, title, body });
+              } catch (createErr) {
+                if (createErr.status === 422 && createErr.message && createErr.message.includes("No commits")) {
+                  console.log("Attempted to create PR but no commits between branches — nothing to do.");
+                } else {
+                  throw createErr;
+                }
+              }
             }
