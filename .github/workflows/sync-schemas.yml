@@ -42,8 +42,25 @@ jobs:
           # # Publish to the mirror branch (force, but NOT to main)
           # git switch -C upstream-mirror
           # git push origin HEAD:upstream-mirror --force
+      
+      - name: Check if upstream-mirror differs from main
+        id: diffcheck
+        run: |
+          git fetch origin main upstream-mirror
+          # If main doesn't exist yet, treat as "changes present"
+          if ! git rev-parse --verify origin/main >/dev/null 2>&1; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Exit code 1 => there ARE changes, 0 => no changes
+          if git diff --quiet origin/main..origin/upstream-mirror; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Create or update PR into main
+        if: steps.diffcheck.outputs.has_changes == 'true'
         uses: actions/github-script@v7
         with:
           script: |
