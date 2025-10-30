@@ -1,6 +1,7 @@
 {
 	"title": "ACF Blocks block.json extended schema",
 	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$comment": "An extended form of the WordPress block.json schema available at http://schemas.wp.org/trunk/block.json",
 	"definitions": {
 		"//": {
 			"reference": "https://developer.wordpress.org/block-editor/reference-guides/block-api/block-metadata/",
