@@ -28,14 +28,20 @@ jobs:
           git fetch upstream trunk
 
       - name: Create filtered mirror (schemas/ -> repo root)
+        env:
+          REMOTE_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
         run: |
           # Work on a temporary branch that tracks upstream tip
           git switch -C upstream-trunk FETCH_HEAD
           git filter-repo --path schemas/ --path-rename schemas/: --force
 
-          # Publish to the mirror branch (force, but NOT to main)
-          git switch -C upstream-mirror
-          git push origin HEAD:upstream-mirror --force
+          git remote remove origin 2>/dev/null || true
+          git remote add origin "$REMOTE_URL"
+          git push --force origin HEAD:upstream-mirror
+
+          # # Publish to the mirror branch (force, but NOT to main)
+          # git switch -C upstream-mirror
+          # git push origin HEAD:upstream-mirror --force
 
       - name: Create or update PR into main
         uses: actions/github-script@v7
