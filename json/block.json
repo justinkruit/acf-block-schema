@@ -1,6 +1,7 @@
 {
-	"title": "JSON schema for WordPress blocks",
+	"title": "ACF Blocks block.json extended schema",
 	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$comment": "An extended form of the WordPress block.json schema available at http://schemas.wp.org/trunk/block.json",
 	"definitions": {
 		"//": {
 			"reference": "https://developer.wordpress.org/block-editor/reference-guides/block-api/block-metadata/",
@@ -21,7 +22,7 @@
 			"const": 3
 		},
 		"name": {
-			"description": "The name for a block is a unique string that identifies a block. Names have to be structured as `namespace/block-name`, where namespace is the name of your plugin or theme.",
+			"description": "The name for a block is a unique string that identifies a block. ACF will automatically add an `acf/` namespace if not provided.",
 			"type": "string",
 			"pattern": "^[a-z][a-z0-9-]*/[a-z][a-z0-9-]*$"
 		},
@@ -39,6 +40,55 @@
 		"title": {
 			"description": "This is the display title for your block, which can be translated with our translation functions. The block inserter will show this name.",
 			"type": "string"
+		},
+		"acf": {
+			"type": "object",
+			"description": "An object containing ACF specific block configuration. The presence of this key triggers a block becoming an ACF block",
+			"properties": {
+				"renderTemplate": {
+					"type": "string",
+					"description": "A relative or absolute path to the PHP template which will be rendered for your block."
+				},
+				"renderCallback": {
+					"type": "string",
+					"description": "A callable PHP function that will render the template for this block."
+				},
+				"mode": {
+					"type": "string",
+					"description": "The display mode for your block",
+					"default": "auto",
+					"enum": [ "auto", "edit", "preview" ]
+				},
+				"blockVersion": {
+					"type": "number",
+					"description": "The ACF block API version for this block. Default is 2 (for WordPress 6.0+)",
+					"default": 2
+				},
+				"postTypes": {
+					"type": "array",
+					"description": "An array of post types which this block will be available to add to. By default there is no restriction on post type."
+				},
+				"validate": {
+					"type": "boolean",
+					"description": "Should the fields in the block be validated as per the field group configuration. Default is true",
+					"default": true
+				},
+				"usePostMeta": {
+					"type": "boolean",
+					"description": "Should this block store its field values directly in post meta, rather than the block comment. When enabled, this block will be limited to once per page, and only as a top level block. These blocks will also not be supported as widgets or in the site editor/templates. Default is false.",
+					"default": false
+				},
+				"hideFieldsInSidebar": {
+					"type": "boolean",
+					"description": "Whether to hide ACF fields from the block editor sidebar (v3 blocks only). Default is false.",
+					"default": false
+				},
+				"autoInlineEditing": {
+					"type": "boolean",
+					"description": "ACF will automatically apply inline editing functionality to any HTML elements where an ACF field's value is the only thing within it. Default is false. Requires ACF v6.7+.",
+					"default": false
+				}
+			}
 		},
 		"category": {
 			"description": "Blocks are grouped into categories to help users browse and discover them.\n Core provided categories are: text, media, design, widgets, theme, embed\n\nPlugins and Themes can also register custom block categories.\n\nhttps://developer.wordpress.org/block-editor/reference-guides/filters/block-filters/#managing-block-categories",
@@ -382,6 +432,11 @@
 					"type": "boolean",
 					"default": true
 				},
+				"jsx": {
+					"type": "boolean",
+					"description": "Should ACF parse the rendered block HTML through React. Required for <InnerBlocks /> support.",
+					"default": true
+				},
 				"layout": {
 					"description": "This value only applies to blocks that are containers for inner blocks. If set to `true` the layout type will be `flow`. For other layout types it's necessary to set the `type` explicitly inside the `default` object.",
 					"oneOf": [
@@ -496,6 +551,11 @@
 						}
 					],
 					"default": false
+				},
+				"mode": {
+					"type": "boolean",
+					"description": "All users to change the ACF display mode. If false, only the defined mode in the ACF key will be allowed for this block.",
+					"default": true
 				},
 				"multiple": {
 					"description": "A non-multiple block can be inserted into each post, one time only. For example, the built-in ‘More’ block cannot be inserted again if it already exists in the post being edited. A non-multiple block’s icon is automatically dimmed (unclickable) to prevent multiple instances.",

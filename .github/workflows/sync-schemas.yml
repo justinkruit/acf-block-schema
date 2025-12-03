@@ -1,0 +1,110 @@
+name: Sync schemas from Gutenberg
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'   # Every Monday 06:00 UTC; change as you like
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install git-filter-repo
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install git-filter-repo
+
+      - name: Fetch upstream trunk
+        run: |
+          git remote add upstream https://github.com/WordPress/gutenberg.git || true
+          git fetch upstream trunk
+
+      - name: Create filtered mirror (schemas/ -> repo root)
+        env:
+          REMOTE_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          # Work on a temporary branch that tracks upstream tip
+          git switch -C upstream-trunk FETCH_HEAD
+          git filter-repo --path schemas/ --path-rename schemas/: --force
+
+          git remote remove origin 2>/dev/null || true
+          git remote add origin "$REMOTE_URL"
+          git push --force origin HEAD:upstream-mirror
+
+          # # Publish to the mirror branch (force, but NOT to main)
+          # git switch -C upstream-mirror
+          # git push origin HEAD:upstream-mirror --force
+      
+      - name: Check if upstream-mirror differs from main
+        id: diffcheck
+        run: |
+          git fetch origin main upstream-mirror
+          # If main doesn't exist yet, treat as "changes present"
+          if ! git rev-parse --verify origin/main >/dev/null 2>&1; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Exit code 1 => there ARE changes, 0 => no changes
+          if git diff --quiet origin/main..origin/upstream-mirror; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create or update PR into main
+        if: steps.diffcheck.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const head = "upstream-mirror";
+            const base = "main";
+            const title = "Sync: update schemas from Gutenberg";
+            const body = "Automated sync of `schemas/` from WordPress/gutenberg (filtered to repo root).";
+
+            // Ensure there are commits on head that are not in base
+            try {
+              const cmp = await github.rest.repos.compareCommits({ owner, repo, base, head });
+              // ahead_by === 0 => no commits on head that aren't in base
+              if (cmp && cmp.data && typeof cmp.data.ahead_by === 'number' && cmp.data.ahead_by === 0) {
+                console.log("No commits between main and upstream-mirror — skipping PR creation.");
+                return;
+              }
+            } catch (err) {
+              // If compareCommits throws 404, one of the refs may not exist; continue to try listing PRs/create
+              if (err.status !== 404) {
+                throw err;
+              }
+            }
+
+            // Try to find an open PR from upstream-mirror to main
+            const { data: prs } = await github.rest.pulls.list({
+              owner, repo, state: "open", base, head: `${owner}:${head}`
+            });
+
+            if (prs.length > 0) {
+              // Update the existing PR title/body just in case
+              await github.rest.pulls.update({
+                owner, repo, pull_number: prs[0].number, title, body
+              });
+            } else {
+              // Create a new PR, but gracefully handle the "No commits between" validation error
+              try {
+                await github.rest.pulls.create({ owner, repo, head, base, title, body });
+              } catch (createErr) {
+                if (createErr.status === 422 && createErr.message && createErr.message.includes("No commits")) {
+                  console.log("Attempted to create PR but no commits between branches — nothing to do.");
+                } else {
+                  throw createErr;
+                }
+              }
+            }
