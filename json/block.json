@@ -87,6 +87,14 @@
 					"type": "boolean",
 					"description": "ACF will automatically apply inline editing functionality to any HTML elements where an ACF field's value is the only thing within it. Default is false. Requires ACF v6.7+.",
 					"default": false
+				},
+				"expandedEditorButtonText": {
+					"type": "string",
+					"description": "The text to display in the button which opens the expanded editor."
+				},
+				"expandedEditorButtons": {
+					"type": "boolean",
+					"description": "Whether to show the buttons to open the expanded editor."
 				}
 			}
 		},
