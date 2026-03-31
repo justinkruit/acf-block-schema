@@ -85,7 +85,7 @@
 				},
 				"autoInlineEditing": {
 					"type": "boolean",
-					"description": "ACF will automatically apply inline editing functionality to any HTML elements where an ACF field's value is the only thing within it. Default is false. Requires ACF v6.7+.",
+					"description": "Should ACF automatically apply inline editing to HTML elements containing only an ACF field's value (v3 blocks only). Default is false.",
 					"default": false
 				},
 				"expandedEditorButtonText": {
