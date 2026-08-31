@@ -95,6 +95,11 @@
 				"expandedEditorButtons": {
 					"type": "boolean",
 					"description": "Whether to show the buttons to open the expanded editor."
+				},
+				"renderPreview": {
+					"type": "boolean",
+					"description": "When false, shows a placeholder with the block's icon, title, and an \"Edit Block\" button in the editor instead of rendering the block's template as a live preview.",
+					"default": true
 				}
 			}
 		},
